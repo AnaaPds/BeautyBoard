@@ -23,13 +23,16 @@ function Home() {
     description: '',
   });
 
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [selectedPriority, setSelectedPriority] = useState(''); 
+
   const totalProdutos = products.length;
   const produtosComprados = products.filter(p => p.comprado).length;
   const progresso = totalProdutos ? (produtosComprados / totalProdutos) * 100 : 0;
 
   useEffect(() => {
-    localStorage.setItem("products", JSON.stringify(products)); // Salvando no localStorage
-  }, [products]); // Esse efeito será executado sempre que o estado 'products' mudar
+    localStorage.setItem("products", JSON.stringify(products));
+  }, [products]);
 
   function handleShow() {
     setShowModal(true);
@@ -38,6 +41,7 @@ function Home() {
   function handleClose() {
     setShowModal(false);
     setFormData({ name: '', image: '', price: '', prioridade: 'Baixa', description: '' });
+    setEditingProduct(null);
   }
 
   function handleChange(e) {
@@ -54,182 +58,177 @@ function Home() {
       comprado: false,
     };
 
-    // Atualiza o estado de products
-    const updatedProducts = [...products, newProduct];
-    setProducts(updatedProducts);
-
-    // Salva no localStorage imediatamente após atualizar o estado
-    localStorage.setItem("products", JSON.stringify(updatedProducts));
-
+    setProducts([...products, newProduct]);
     handleClose();
   }
 
-  function handleComprar(id) {
-    const updatedProducts = products.map(product => 
+  function handleEditProduct(product) {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name,
+      image: product.image,
+      price: product.price,
+      prioridade: product.prioridade,
+      description: product.description,
+    });
+    setShowModal(true);
+  }
+
+  function handleSaveEdit() {
+    const updatedProducts = products.map(product =>
+      product.id === editingProduct.id ? { ...product, ...formData } : product
+    );
+    setProducts(updatedProducts);
+    handleClose();
+  }
+
+  function handleDeleteProduct(id) {
+    const confirmar = window.confirm('Tem certeza que deseja excluir este item?');
+    if (!confirmar) {
+      return;
+    }
+    const updatedProducts = products.filter(product => product.id !== id);
+    setProducts(updatedProducts);
+  }
+
+  function handleToggleComprado(id) {
+    const updatedProducts = products.map(product =>
       product.id === id ? { ...product, comprado: !product.comprado } : product
     );
     setProducts(updatedProducts);
-    localStorage.setItem("products", JSON.stringify(updatedProducts));
   }
 
-  function handleExcluir(id) {
-    const updatedProducts = products.filter(product => product.id !== id);
-    setProducts(updatedProducts);
-    localStorage.setItem("products", JSON.stringify(updatedProducts));
+  function handlePriorityChange(e) {
+    const priority = e.target.value;
+    setSelectedPriority(priority); 
   }
 
-  return (
-    <div className="home-container">
-      <header className="header">
-        <img src={logo} alt="Logo" className="logo" />
-        <h1 className="title">BeautyBoard</h1>
-      </header>
+  const filteredProducts = selectedPriority
+    ? products.filter(product => product.prioridade === selectedPriority)
+    : products;
 
-      <div className="controls">
-        <Dropdown className="priority-dropdown">
-          <Dropdown.Toggle variant="danger" id="dropdown-basic">
-            Prioridade
-          </Dropdown.Toggle>
-          <Dropdown.Menu>
-            <Dropdown.Item onClick={() => setProducts(products.filter(p => p.prioridade === 'Alta'))}>
-              Alta
-            </Dropdown.Item>
-            <Dropdown.Item onClick={() => setProducts(products.filter(p => p.prioridade === 'Média'))}>
-              Média
-            </Dropdown.Item>
-            <Dropdown.Item onClick={() => setProducts(products.filter(p => p.prioridade === 'Baixa'))}>
-              Baixa
-            </Dropdown.Item>
-          </Dropdown.Menu>
-        </Dropdown>
-        <Button variant="danger" onClick={handleShow} className="add-button">
-          Adicionar
-        </Button>
-      </div>
+  return React.createElement('div', { className: 'home-container' },
+    React.createElement('header', { className: 'header' },
+      React.createElement('img', { src: logo, alt: 'Logo', className: 'logo' }),
+      React.createElement('h1', { className: 'title' }, 'BeautyBoard')
+    ),
 
-      <div className="penteadeira-title">
-        <img src={tituloimg} alt="Minha Penteadeira dos Sonhos" className="title-img" />
-      </div>
+    React.createElement('div', { className: 'controls' },
+      React.createElement(Dropdown, { className: 'priority-dropdown' },
+        React.createElement(Dropdown.Toggle, { variant: 'danger', id: 'dropdown-basic' }, 'Prioridade'),
+        React.createElement(Dropdown.Menu, null,
+          React.createElement(Dropdown.Item, { onClick: () => handlePriorityChange({ target: { value: 'Alta' } }) }, 'Alta'),
+          React.createElement(Dropdown.Item, { onClick: () => handlePriorityChange({ target: { value: 'Média' } }) }, 'Média'),
+          React.createElement(Dropdown.Item, { onClick: () => handlePriorityChange({ target: { value: 'Baixa' } }) }, 'Baixa'),
+          React.createElement(Dropdown.Item, { onClick: () => handlePriorityChange({ target: { value: '' } }) }, 'Todos')
+        )
+      ),
+      React.createElement(Button, { variant: 'danger', onClick: handleShow, className: 'add-button' }, 'Adicionar')
+    ),
 
-      <div className="products">
-        <div className="product-container">
-          <div className="progress-bar-container">
-            <span className="progress-text">
-              Comprados: {produtosComprados} de {totalProdutos}
-            </span>
-            <div className="progress-small">
-              <div
-                className="progress-filled-small"
-                style={{ width: `${progresso}%` }}
-              />
-            </div>
-          </div>
+    React.createElement('div', { className: 'penteadeira-title' },
+      React.createElement('img', { src: tituloimg, alt: 'Minha Penteadeira dos Sonhos', className: 'title-img' })
+    ),
 
-          {products.map((product) => (
-            <div
-              className={`product-item ${product.comprado ? 'comprado' : ''}`}
-              key={product.id}
-            >
-              <button
-                className="remove-btn"
-                onClick={() => handleExcluir(product.id)}
-              >
-                <img src={deleteIcon} alt="Excluir" />
-              </button>
-              <button
-                className="check-btn"
-                onClick={() => handleComprar(product.id)}
-              >
-                <img src={checkIcon} alt="Marcar como Comprado" />
-              </button>
-              <img
-                src={product.image}
-                alt="Produto"
-                className="product-image"
-              />
-              <h5 className="product-title">{product.name}</h5>
-              <p className="product-description">{product.description}</p>
-              <h4 className="product-price">
-                R$ {parseFloat(product.price).toFixed(2)}
-              </h4>
-              <p className="product-priority">
-                Prioridade: {product.prioridade}
-              </p>
-              <Button variant="danger" className="edit-btn">
-                Editar
-              </Button>
-            </div>
-          ))}
-        </div>
-      </div>
+    React.createElement('div', { className: 'products' },
+      React.createElement('div', { className: 'product-container' },
+        React.createElement('div', { className: 'progress-bar-container' },
+          React.createElement('span', { className: 'progress-text' }, `Comprados: ${produtosComprados} de ${totalProdutos}`),
+          React.createElement('div', { className: 'progress-small' },
+            React.createElement('div', {
+              className: 'progress-filled-small',
+              style: { width: `${progresso}%` }
+            })
+          )
+        ),
+        filteredProducts.map(product =>
+          React.createElement('div', {
+            className: `product-item ${product.comprado ? 'bought' : ''}`, 
+            key: product.id
+          },
+            React.createElement('button', {
+              className: 'remove-btn',
+              onClick: () => handleDeleteProduct(product.id)
+            },
+              React.createElement('img', { src: deleteIcon, alt: 'Excluir' })
+            ),
+            React.createElement('button', {
+              className: 'check-btn',
+              onClick: () => handleToggleComprado(product.id)
+            },
+              React.createElement('img', {
+                src: checkIcon,
+                alt: product.comprado ? 'Desmarcar como Comprado' : 'Marcar como Comprado'
+              })
+            ),
+            React.createElement('img', { src: product.image, alt: 'Produto', className: 'product-image' }),
+            React.createElement('h5', { className: 'product-title' }, product.name),
+            React.createElement('p', { className: 'product-description' }, product.description),
+            React.createElement('h4', { className: 'product-price' }, `R$ ${parseFloat(product.price).toFixed(2)}`),
+            React.createElement('p', { className: 'product-priority' }, `Prioridade: ${product.prioridade}`),
+            React.createElement(Button, {
+              variant: 'danger',
+              className: 'edit-btn',
+              onClick: () => handleEditProduct(product)
+            }, 'Editar')
+          )
+        )
+      )
+    ),
 
-      <Modal show={showModal} onHide={handleClose} className="modal">
-        <Modal.Header closeButton>
-          <Modal.Title>Adicionar Produto</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group>
-              <Form.Label>Nome</Form.Label>
-              <Form.Control
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-              />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Imagem (URL)</Form.Label>
-              <Form.Control
-                type="text"
-                name="image"
-                value={formData.image}
-                onChange={handleChange}
-              />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Preço</Form.Label>
-              <Form.Control
-                type="text"
-                name="price"
-                value={formData.price}
-                onChange={handleChange}
-              />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Descrição</Form.Label>
-              <Form.Control
-                type="text"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-              />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Prioridade</Form.Label>
-              <select
-                name="prioridade"
-                className="form-select"
-                value={formData.prioridade}
-                onChange={handleChange}
-              >
-                <option value="Baixa">Baixa</option>
-                <option value="Média">Média</option>
-                <option value="Alta">Alta</option>
-              </select>
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleClose}>
-            Cancelar
-          </Button>
-          <Button variant="danger" onClick={handleAddProduct}>
-            Salvar
-          </Button>
-        </Modal.Footer>
-      </Modal>
-    </div>
+    React.createElement(Modal, { show: showModal, onHide: handleClose, className: 'modal' },
+      React.createElement(Modal.Header, { closeButton: true },
+        React.createElement(Modal.Title, null, editingProduct ? 'Editar Produto' : 'Adicionar Produto')
+      ),
+      React.createElement(Modal.Body, null,
+        React.createElement(Form, null,
+          React.createElement(Form.Group, null,
+            React.createElement(Form.Label, null, 'Nome'),
+            React.createElement(Form.Control, {
+              type: 'text', name: 'name', value: formData.name, onChange: handleChange
+            })
+          ),
+          React.createElement(Form.Group, null,
+            React.createElement(Form.Label, null, 'Imagem (URL)'),
+            React.createElement(Form.Control, {
+              type: 'text', name: 'image', value: formData.image, onChange: handleChange
+            })
+          ),
+          React.createElement(Form.Group, null,
+            React.createElement(Form.Label, null, 'Preço'),
+            React.createElement(Form.Control, {
+              type: 'text', name: 'price', value: formData.price, onChange: handleChange
+            })
+          ),
+          React.createElement(Form.Group, null,
+            React.createElement(Form.Label, null, 'Descrição'),
+            React.createElement(Form.Control, {
+              type: 'text', name: 'description', value: formData.description, onChange: handleChange
+            })
+          ),
+          React.createElement(Form.Group, null,
+            React.createElement(Form.Label, null, 'Prioridade'),
+            React.createElement('select', {
+              name: 'prioridade',
+              className: 'form-select',
+              value: formData.prioridade,
+              onChange: handleChange
+            },
+              React.createElement('option', { value: 'Baixa' }, 'Baixa'),
+              React.createElement('option', { value: 'Média' }, 'Média'),
+              React.createElement('option', { value: 'Alta' }, 'Alta')
+            )
+          )
+        )
+      ),
+      React.createElement(Modal.Footer, null,
+        React.createElement(Button, { variant: 'secondary', onClick: handleClose }, 'Cancelar'),
+        React.createElement(Button, {
+          variant: 'danger',
+          onClick: editingProduct ? handleSaveEdit : handleAddProduct
+        }, editingProduct ? 'Salvar Alterações' : 'Salvar')
+      )
+    )
   );
 }
 
